@@ -187,7 +187,7 @@
                 This outputText holds the string of the current input and does
                 not render if there is no input.-->
                 <h:outputText rendered="#{exercises.showInputHide}" style="background-color: red; color: white" value="Input for the Test" />
-                <h:inputTextarea readonly="true"  rendered="#{exercises.showInputHide}" style="background-color: gainsboro; width:575px; margin-top:-10px; width:100%; margin: 0 auto;" value="#{exercises.input}" />
+                <h:inputTextarea readonly="true"  rendered="#{exercises.showInputHide}" style="background-color: gainsboro; width:575px; margin-top:-10px; width:100%; margin: 0 auto;" value="#{exercises.inputDisplay}" />
                 <!--This outputText holds the string of the user's output.-->
                 <h:outputText rendered="#{exercises.showOutputHide}" style="background-color: red; color: white" value="Your Output" />
                 <h:inputTextarea readonly="true"  rendered="#{exercises.showOutputHide}" style="background-color: gainsboro; width:575px; margin-top:-10px; width:100%; margin: 0 auto;" value="#{exercises.compareString}" />
