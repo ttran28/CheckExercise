@@ -55,16 +55,15 @@ public class exercises {
     private String fileInfo;
     private String correct; //Holds the string if the program is correct or not.
     private String compile; //Holds the string from compiler response
-    private String compareString; //Holds the string of the user's output
     private Boolean hide; //This hides 
     private Boolean otherHide;
     private Boolean checkHide; //Hide the Automatic Check button. If gradeable = true, else = false;
     private Boolean resultHide;
     private Boolean appearWhenAutomaticCheck; //Renders message if Automatic Check produces the correct result after you click Automatic Check. 
-    private Boolean showInputHide; //show actual input if it exists
-    private Boolean showOutputHide;
-    private int count;
     private Boolean matches;
+    private Boolean showInputHide;
+    private Boolean showOutputHide;
+    String compareString;
 
     final static int EXECUTION_TIME_ALLOWED = 1000;
     final static int EXECUTION_TIME_INTERVAL = 100;
@@ -78,6 +77,7 @@ public class exercises {
         updateExes();
         header1 = selectedExercise;
         updateProgram();
+        updateInfo();
         hide = false;
         appearWhenAutomaticCheck = false;
     }
@@ -114,7 +114,6 @@ public class exercises {
                     .filter(file -> file.getName().startsWith(startsWith))
                     .collect(Collectors.toList());
         } catch (IOException ex) {
-            System.out.println("failed");
         }
     }
 
@@ -129,8 +128,6 @@ public class exercises {
     private void updateProgram() {
         checkHide = true;
         resultHide = false;
-        showInputHide = false;
-        showOutputHide = false;
         program = "";
         String fileName = ags10e + "exercisedescription/" + header1;
         parseFile(fileName);
@@ -158,8 +155,6 @@ public class exercises {
         output = "";
         input = "";
         inputDisplay = "";
-        System.out.println("update file info");
-        System.out.println();
         buildFiles("gradeexercise/", header1);
         files.forEach((File file) -> {
             String fileName = file.getAbsolutePath();
@@ -168,7 +163,6 @@ public class exercises {
                 cntn = false;
             }
             if (cntn) {
-                System.out.println(fileName);
                 parseFile(fileName);
                 if (fileName.endsWith("output")) {
                     if (!output.isEmpty()) {
@@ -197,9 +191,6 @@ public class exercises {
             }
 
         });
-        System.out.println("output: " + output);
-        System.out.println("input: " + input);
-        System.out.println("input display: " + inputDisplay);
         if (input.isEmpty()) {
             hide = false;
             checkHide = true;
@@ -220,23 +211,22 @@ public class exercises {
                     fileInfo += line;
                 });
             } catch (IOException e) {
-                System.out.println(e.getMessage());
             }
         } else {
-            System.out.println("Invalid file program build - " + fileName);
         }
     }
 
     public void submit() {
         header1 = selectedExercise;
         appearWhenAutomaticCheck = false;
+        showOutputHide = false;
+        showInputHide = false;
+        resultHide = true;
         updateProgram();
         updateInfo();
     }
 
     private void purgeDirectory(File dir) {
-        System.out.println("purge directory");
-        System.out.println(Arrays.toString(dir.listFiles()));
         for (File file : dir.listFiles()) {
             file.delete();
         }
@@ -245,6 +235,7 @@ public class exercises {
     public void buildProgram() {
         showInputHide = false;
         showOutputHide = false;
+        appearWhenAutomaticCheck = false;
         purgeDirectory(new File(ags10e + "\\run"));
         try {
             resultHide = true;
@@ -295,10 +286,11 @@ public class exercises {
     }
 
     public void checkProgram() {
-        System.out.println("checking the program");
-        count = 0;
+        if (!output.isEmpty()) {
+            output = output.replaceAll("\n", "#");
+        }
+        compareString = "";
         matches = true;
-        System.out.println(output);
         //Build program first
         purgeDirectory(new File(ags10e + "\\run"));
         hide = false;
@@ -330,13 +322,16 @@ public class exercises {
                         try {
                             String outFileName = file.getName();
                             String inputFile = outputComp.replace(".output", ".input");
+                            Path p = Paths.get(inputFile);
+                            boolean notExists = Files.notExists(p);
+                            if (notExists) {
+                                inputFile = "";
+                            }
                             String outputFile = ags10e + "\\run\\" + outFileName;
                             Output outputer = executeProgram(inputFile, outputFile);
 
                             //Add Execute string
                             compile += "command> java " + header1 + "\n";
-                            compareString = "";
-                            Scanner input = new Scanner(new File(outputFile));
                             //If there is an infinite loop, display this message. Else,
                             //continue with comparing results.
                             if (outputer.isInfiniteLoop) {
@@ -345,23 +340,32 @@ public class exercises {
                                 showOutputHide = false;
                                 appearWhenAutomaticCheck = false;
                                 compile += "Your program takes too long. It runs out of the allowed CPU time 10000ms. It may have an infinite loop or the expected input for the program is not provided or provided incorrectly.";
+                                matches = false;
                             } else {
-                                while (input.hasNextLine()) {
-                                    String temp = input.nextLine();
-                                    compareString += temp;
-                                    compile += temp + "\n";
-                                    if (input.hasNext()) {
-                                        compareString += "#";
+                                compareString = "";
+                                Scanner inputt = new Scanner(new File(outputFile));
+                                buildFiles("gradeexercise/", header1);
+                                String fileName = file.getAbsolutePath();
+                                parseFile(fileName);
+                                String outputTemp = "";
+                                if (fileName.endsWith("output")) {
+                                    if (!output.isEmpty()) {
+                                        outputTemp += " ";
                                     }
+                                    outputTemp += fileInfo;
                                 }
-                                String[] outTemp = output.split("#");
-                                if (!compareString.contains(outTemp[count])) {
-                                    matches = false;
+                                String temp = "";
+                                while (inputt.hasNext()) {
+                                    temp += inputt.nextLine();
                                 }
-                                count += 1;
-                                //Compare compile message with the output
-                                appearWhenAutomaticCheck = true;
-
+                                compareString += temp + "\n";
+                                compile += temp + "\n";
+                                if (inputt.hasNext()) {
+                                    compareString += " ";
+                                }
+                                System.out.println("Test for each file" + file + " " + outputTemp + " OUTPUT " + compareString);
+                                matches = compareString.contains(outputTemp);
+                                System.out.println("Matches: " + matches);
                             }
                             compile += "\ncommand>\n";
                         } catch (FileNotFoundException ex) {
@@ -369,20 +373,25 @@ public class exercises {
                         }
                     }
                 });
+
             }
         } catch (IOException ex) {
             ex.printStackTrace();
         }
+
+        //Compare compile message with the output
+        appearWhenAutomaticCheck = true;
         if (matches) {
             correct = "Your program is correct.";
             resultHide = false;
+            showOutputHide = false;
         } else {
             correct = "Your program is incorrect.";
-            resultHide = true;
+            resultHide = false;
             showInputHide = !input.isEmpty();
             showOutputHide = true;
+
         }
-        System.out.println(correct);
     }
 
     private Output compileProgram() {
